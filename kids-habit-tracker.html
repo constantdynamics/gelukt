@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kids Habit Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom animations and styles */
+        @keyframes pulse-slow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .pulse-slow {
+            animation: pulse-slow 2s ease-in-out infinite;
+        }
+
+        @keyframes float-up {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-200px) scale(1.5); opacity: 0; }
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes star-burst {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: var(--star-tx, 0) var(--star-ty, 0) scale(0); opacity: 0; }
+        }
+
+        @keyframes heart-float {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-150px) scale(1.3); opacity: 0; }
+        }
+
+        @keyframes firework-explosion {
+            0% { transform: translate(0, 0) scale(0); opacity: 1; }
+            50% { opacity: 1; }
+            100% { transform: var(--firework-tx, 0) var(--firework-ty, 0) scale(1); opacity: 0; }
+        }
+
+        .animation-particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Touch feedback */
+        .task-circle:active {
+            transform: scale(0.95);
+        }
+
+        /* Smooth transitions */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 overflow-x-hidden">
+    <!-- App Container -->
+    <div id="app" class="max-w-md mx-auto bg-white min-h-screen relative pb-24">
+        <!-- Content will be rendered here -->
+    </div>
+
+    <script>
+        // ============================================================================
+        // DATA MODEL & STATE MANAGEMENT
+        // ============================================================================
+
+        const TASK_TEMPLATES = [
+            { name: 'Tanden poetsen', emoji: '🪥', word: 'TANDEN', dayPart: 'morning' },
+            { name: 'Aankleden', emoji: '👕', word: 'KLEREN', dayPart: 'morning' },
+            { name: 'Handen wassen', emoji: '🧼', word: 'HANDEN', dayPart: 'afternoon' },
+            { name: 'Jas ophangen', emoji: '🧥', word: 'JAS', dayPart: 'afternoon' },
+            { name: 'Schoenen uit', emoji: '👟', word: 'SCHOENEN', dayPart: 'afternoon' },
+            { name: 'Bordje leeg', emoji: '🍽️', word: 'BORDJE', dayPart: 'afternoon' },
+            { name: 'Hele weg gelopen', emoji: '🚶', word: 'LOPEN', dayPart: 'afternoon' },
+            { name: 'Opruimen speelgoed', emoji: '🧸', word: 'OPRUIMEN', dayPart: 'evening' },
+            { name: 'Naar bed gaan', emoji: '😴', word: 'SLAPEN', dayPart: 'evening' },
+            { name: 'In bed blijven', emoji: '🛏️', word: 'BED', dayPart: 'evening' }
+        ];
+
+        class HabitTrackerApp {
+            constructor() {
+                this.mode = 'child'; // 'child' or 'parent'
+                this.activeDayPart = this.detectDayPart();
+                this.tasks = this.loadTasks();
+                this.weekProgress = this.loadWeekProgress();
+                this.childProfile = this.loadChildProfile();
+                this.init();
+            }
+
+            init() {
+                this.render();
+                this.checkDayPartCompletion();
+            }
+
+            // ============================================================================
+            // DATA PERSISTENCE
+            // ============================================================================
+
+            loadTasks() {
+                const saved = localStorage.getItem('habitTracker_tasks');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+                return { morning: [], afternoon: [], evening: [] };
+            }
+
+            saveTasks() {
+                localStorage.setItem('habitTracker_tasks', JSON.stringify(this.tasks));
+            }
+
+            loadWeekProgress() {
+                const saved = localStorage.getItem('habitTracker_weekProgress');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+                return this.createEmptyWeekProgress();
+            }
+
+            saveWeekProgress() {
+                localStorage.setItem('habitTracker_weekProgress', JSON.stringify(this.weekProgress));
+            }
+
+            loadChildProfile() {
+                const saved = localStorage.getItem('habitTracker_profile');
+                if (saved) {
+                    return JSON.parse(saved);
+                }
+                return { name: 'Kind', avatar: '👶' };
+            }
+
+            saveChildProfile() {
+                localStorage.setItem('habitTracker_profile', JSON.stringify(this.childProfile));
+            }
+
+            createEmptyWeekProgress() {
+                const progress = [];
+                for (let i = 1; i <= 7; i++) {
+                    progress.push({
+                        day: i,
+                        completed: false,
+                        dayParts: { morning: false, afternoon: false, evening: false }
+                    });
+                }
+                return progress;
+            }
+
+            // ============================================================================
+            // TIME DETECTION
+            // ============================================================================
+
+            detectDayPart() {
+                const hour = new Date().getHours();
+                if (hour >= 6 && hour < 12) return 'morning';
+                if (hour >= 12 && hour < 18) return 'afternoon';
+                return 'evening';
+            }
+
+            getCurrentDayIndex() {
+                const day = new Date().getDay();
+                return day === 0 ? 6 : day - 1; // Monday = 0, Sunday = 6
+            }
+
+            // ============================================================================
+            // TASK MANAGEMENT
+            // ============================================================================
+
+            addTask(template, dayPart) {
+                const task = {
+                    id: Date.now().toString(),
+                    name: template.name,
+                    emoji: template.emoji,
+                    verifyWord: template.word,
+                    completed: false,
+                    animation: 'stars',
+                    sound: 'pling'
+                };
+                this.tasks[dayPart].push(task);
+                this.saveTasks();
+                this.render();
+            }
+
+            removeTask(dayPart, taskId) {
+                this.tasks[dayPart] = this.tasks[dayPart].filter(t => t.id !== taskId);
+                this.saveTasks();
+                this.render();
+            }
+
+            updateTask(dayPart, taskId, updates) {
+                const task = this.tasks[dayPart].find(t => t.id === taskId);
+                if (task) {
+                    Object.assign(task, updates);
+                    this.saveTasks();
+                    this.render();
+                }
+            }
+
+            toggleTaskCompletion(dayPart, taskId, completed) {
+                const task = this.tasks[dayPart].find(t => t.id === taskId);
+                if (task) {
+                    task.completed = completed;
+                    this.saveTasks();
+
+                    if (completed) {
+                        this.playAnimation(task.animation);
+                        this.playSound(task.sound);
+                        this.checkDayPartCompletion();
+                    }
+
+                    this.render();
+                }
+            }
+
+            resetToday() {
+                Object.keys(this.tasks).forEach(dayPart => {
+                    this.tasks[dayPart].forEach(task => {
+                        task.completed = false;
+                    });
+                });
+                this.saveTasks();
+                this.render();
+            }
+
+            // ============================================================================
+            // PROGRESS TRACKING
+            // ============================================================================
+
+            checkDayPartCompletion() {
+                const dayIndex = this.getCurrentDayIndex();
+                const dayProgress = this.weekProgress[dayIndex];
+
+                // Check each daypart
+                ['morning', 'afternoon', 'evening'].forEach(dayPart => {
+                    const tasks = this.tasks[dayPart];
+                    if (tasks.length > 0) {
+                        const allCompleted = tasks.every(t => t.completed);
+                        dayProgress.dayParts[dayPart] = allCompleted;
+                    }
+                });
+
+                // Check if entire day is complete
+                const allDayPartsComplete =
+                    dayProgress.dayParts.morning &&
+                    dayProgress.dayParts.afternoon &&
+                    dayProgress.dayParts.evening;
+
+                if (allDayPartsComplete && !dayProgress.completed) {
+                    dayProgress.completed = true;
+                    this.playSound('train');
+                    this.saveWeekProgress();
+                    this.checkWeekCompletion();
+                }
+
+                this.saveWeekProgress();
+            }
+
+            checkWeekCompletion() {
+                const completedDays = this.weekProgress.filter(d => d.completed).length;
+                if (completedDays === 7) {
+                    // Week complete celebration!
+                    setTimeout(() => {
+                        this.showWeekCompleteModal();
+                    }, 500);
+                }
+            }
+
+            getCompletedDaysCount() {
+                return this.weekProgress.filter(d => d.completed).length;
+            }
+
+            // ============================================================================
+            // ANIMATIONS
+            // ============================================================================
+
+            playAnimation(type) {
+                const container = document.getElementById('app');
+                const rect = container.getBoundingClientRect();
+
+                switch(type) {
+                    case 'stars':
+                        this.createStarsAnimation(rect);
+                        break;
+                    case 'confetti':
+                        this.createConfettiAnimation(rect);
+                        break;
+                    case 'balloons':
+                        this.createBalloonsAnimation(rect);
+                        break;
+                    case 'fireworks':
+                        this.createFireworksAnimation(rect);
+                        break;
+                    case 'hearts':
+                        this.createHeartsAnimation(rect);
+                        break;
+                }
+            }
+
+            createStarsAnimation(rect) {
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+
+                for (let i = 0; i < 12; i++) {
+                    const star = document.createElement('div');
+                    star.textContent = '⭐';
+                    star.className = 'animation-particle text-4xl';
+                    star.style.left = centerX + 'px';
+                    star.style.top = centerY + 'px';
+
+                    const angle = (i / 12) * Math.PI * 2;
+                    const distance = 150;
+                    const tx = Math.cos(angle) * distance;
+                    const ty = Math.sin(angle) * distance;
+
+                    star.style.setProperty('--star-tx', `${tx}px`);
+                    star.style.setProperty('--star-ty', `${ty}px`);
+                    star.style.animation = 'star-burst 1s ease-out forwards';
+
+                    document.body.appendChild(star);
+                    setTimeout(() => star.remove(), 1000);
+                }
+            }
+
+            createConfettiAnimation(rect) {
+                const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F'];
+
+                for (let i = 0; i < 30; i++) {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'animation-particle';
+                    confetti.style.left = Math.random() * rect.width + 'px';
+                    confetti.style.top = '-20px';
+                    confetti.style.width = '10px';
+                    confetti.style.height = '10px';
+                    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animation = `confetti-fall ${2 + Math.random()}s linear forwards`;
+                    confetti.style.animationDelay = Math.random() * 0.5 + 's';
+
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 3000);
+                }
+            }
+
+            createBalloonsAnimation(rect) {
+                const balloons = ['🎈', '🎈', '🎈', '🎈', '🎈'];
+
+                balloons.forEach((balloon, i) => {
+                    const el = document.createElement('div');
+                    el.textContent = balloon;
+                    el.className = 'animation-particle text-5xl';
+                    el.style.left = (i * 60 + 40) + 'px';
+                    el.style.top = rect.height + 'px';
+                    el.style.animation = `float-up ${3 + Math.random()}s ease-out forwards`;
+                    el.style.animationDelay = i * 0.2 + 's';
+
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 4000);
+                });
+            }
+
+            createFireworksAnimation(rect) {
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 3;
+
+                for (let burst = 0; burst < 3; burst++) {
+                    setTimeout(() => {
+                        for (let i = 0; i < 16; i++) {
+                            const particle = document.createElement('div');
+                            particle.className = 'animation-particle';
+                            particle.style.left = centerX + 'px';
+                            particle.style.top = centerY + 'px';
+                            particle.style.width = '8px';
+                            particle.style.height = '8px';
+                            particle.style.borderRadius = '50%';
+                            particle.style.backgroundColor = ['#FFD700', '#FF6B6B', '#4ECDC4', '#F7DC6F'][Math.floor(Math.random() * 4)];
+
+                            const angle = (i / 16) * Math.PI * 2;
+                            const distance = 100 + Math.random() * 50;
+                            const tx = Math.cos(angle) * distance;
+                            const ty = Math.sin(angle) * distance;
+
+                            particle.style.setProperty('--firework-tx', `${tx}px`);
+                            particle.style.setProperty('--firework-ty', `${ty}px`);
+                            particle.style.animation = 'firework-explosion 1s ease-out forwards';
+
+                            document.body.appendChild(particle);
+                            setTimeout(() => particle.remove(), 1000);
+                        }
+                    }, burst * 400);
+                }
+            }
+
+            createHeartsAnimation(rect) {
+                const hearts = ['💕', '💖', '💗', '💝', '💕', '💖'];
+
+                hearts.forEach((heart, i) => {
+                    const el = document.createElement('div');
+                    el.textContent = heart;
+                    el.className = 'animation-particle text-5xl';
+                    el.style.left = (Math.random() * rect.width) + 'px';
+                    el.style.top = rect.height + 'px';
+                    el.style.animation = `heart-float ${2 + Math.random()}s ease-out forwards`;
+                    el.style.animationDelay = i * 0.15 + 's';
+
+                    document.body.appendChild(el);
+                    setTimeout(() => el.remove(), 3000);
+                });
+            }
+
+            // ============================================================================
+            // SOUND EFFECTS
+            // ============================================================================
+
+            playSound(type) {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                switch(type) {
+                    case 'pling':
+                        this.playPlingSound(audioContext);
+                        break;
+                    case 'hoera':
+                        this.playHoeraSound(audioContext);
+                        break;
+                    case 'gelukt':
+                        this.playGeluktSound(audioContext);
+                        break;
+                    case 'train':
+                        this.playTrainSound(audioContext);
+                        break;
+                }
+            }
+
+            playPlingSound(audioContext) {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            }
+
+            playHoeraSound(audioContext) {
+                const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+
+                notes.forEach((freq, i) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + i * 0.1);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.2);
+
+                    oscillator.start(audioContext.currentTime + i * 0.1);
+                    oscillator.stop(audioContext.currentTime + i * 0.1 + 0.2);
+                });
+            }
+
+            playGeluktSound(audioContext) {
+                const melody = [
+                    { freq: 523.25, time: 0 },     // C5
+                    { freq: 587.33, time: 0.15 },  // D5
+                    { freq: 659.25, time: 0.3 },   // E5
+                    { freq: 783.99, time: 0.45 }   // G5
+                ];
+
+                melody.forEach(note => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.setValueAtTime(note.freq, audioContext.currentTime + note.time);
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime + note.time);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + note.time + 0.2);
+
+                    oscillator.start(audioContext.currentTime + note.time);
+                    oscillator.stop(audioContext.currentTime + note.time + 0.2);
+                });
+            }
+
+            playTrainSound(audioContext) {
+                // Train whistle
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.2);
+
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime + 0.4);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.6);
+
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.6);
+            }
+
+            // ============================================================================
+            // RENDER METHODS
+            // ============================================================================
+
+            render() {
+                const app = document.getElementById('app');
+
+                if (this.mode === 'child') {
+                    app.innerHTML = this.renderChildMode();
+                } else {
+                    app.innerHTML = this.renderParentMode();
+                }
+
+                this.attachEventListeners();
+            }
+
+            renderChildMode() {
+                const hasTasks = Object.values(this.tasks).some(tasks => tasks.length > 0);
+
+                return `
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 flex justify-between items-center">
+                        <div class="flex items-center gap-3">
+                            <div class="text-5xl">${this.childProfile.avatar}</div>
+                            <div class="text-2xl font-bold">${this.childProfile.name}</div>
+                        </div>
+                        <button onclick="app.switchMode('parent')" class="text-4xl hover:scale-110 transition-transform">
+                            ⚙️
+                        </button>
+                    </div>
+
+                    <!-- Day Part Tabs -->
+                    <div class="flex sticky top-0 z-10 shadow-md">
+                        ${this.renderDayPartTab('morning', '🐓 OCHTEND', 'bg-yellow-300', 'bg-yellow-500')}
+                        ${this.renderDayPartTab('afternoon', '🌞 MIDDAG', 'bg-orange-300', 'bg-orange-500')}
+                        ${this.renderDayPartTab('evening', '🌛 AVOND', 'bg-blue-400', 'bg-blue-600')}
+                    </div>
+
+                    <!-- Tasks Grid -->
+                    <div class="p-6 pb-32">
+                        ${hasTasks ? this.renderTasksGrid() : this.renderEmptyState()}
+                    </div>
+
+                    <!-- Mini Train Footer -->
+                    ${this.renderMiniTrain()}
+                `;
+            }
+
+            renderDayPartTab(dayPart, label, bgColor, activeBgColor) {
+                const isActive = this.activeDayPart === dayPart;
+                const baseClass = `flex-1 py-4 text-center font-bold text-sm transition-all cursor-pointer ${bgColor}`;
+                const activeClass = isActive ? `${activeBgColor} scale-105 shadow-lg` : 'hover:opacity-80';
+
+                return `
+                    <div class="${baseClass} ${activeClass}" onclick="app.switchDayPart('${dayPart}')">
+                        ${label}
+                    </div>
+                `;
+            }
+
+            renderTasksGrid() {
+                const tasks = this.tasks[this.activeDayPart];
+
+                if (tasks.length === 0) {
+                    return '<div class="text-center text-gray-500 py-12 text-lg">Geen taken voor dit dagdeel</div>';
+                }
+
+                return `
+                    <div class="grid grid-cols-2 gap-6">
+                        ${tasks.map(task => this.renderTaskCircle(task)).join('')}
+                    </div>
+                `;
+            }
+
+            renderTaskCircle(task) {
+                const isCompleted = task.completed;
+                const baseClass = 'w-30 h-30 rounded-full flex items-center justify-center text-6xl shadow-lg cursor-pointer transition-all hover:scale-105 active:scale-95';
+                const bgClass = isCompleted
+                    ? 'bg-gradient-to-br from-green-400 to-green-600 relative'
+                    : 'bg-gradient-to-br from-purple-400 via-pink-400 to-red-400 pulse-slow';
+
+                return `
+                    <div class="flex flex-col items-center gap-3" onclick="app.handleTaskClick('${this.activeDayPart}', '${task.id}')">
+                        <div class="${baseClass} ${bgClass}" style="width: 120px; height: 120px;">
+                            ${task.emoji}
+                            ${isCompleted ? '<div class="absolute inset-0 bg-green-500 bg-opacity-80 rounded-full flex items-center justify-center text-white text-5xl">✓</div>' : ''}
+                        </div>
+                        <div class="text-center font-bold text-lg">${task.name}</div>
+                    </div>
+                `;
+            }
+
+            renderEmptyState() {
+                return `
+                    <div class="text-center py-20">
+                        <div class="text-8xl mb-6">🎯</div>
+                        <div class="text-2xl font-bold text-gray-600 mb-4">Nog geen taken!</div>
+                        <div class="text-lg text-gray-500">Laat je ouder taken toevoegen</div>
+                    </div>
+                `;
+            }
+
+            renderMiniTrain() {
+                const completedCount = this.getCompletedDaysCount();
+
+                return `
+                    <div class="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-white rounded-full shadow-2xl px-4 py-3 flex gap-2 z-20 cursor-pointer hover:scale-105 transition-transform"
+                         onclick="app.showTrainDetailModal()">
+                        ${this.weekProgress.map((day, i) => `
+                            <div class="w-6 h-6 rounded ${day.completed ? 'bg-green-500' : 'bg-gray-300'}"></div>
+                        `).join('')}
+                        <div class="ml-2 font-bold text-sm">${completedCount}/7</div>
+                    </div>
+                `;
+            }
+
+            renderParentMode() {
+                return `
+                    <!-- Parent Header -->
+                    <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+                        <button onclick="app.switchMode('child')" class="text-3xl hover:scale-110 transition-transform">
+                            ← Terug
+                        </button>
+                        <div class="text-xl font-bold">Ouder Modus</div>
+                        <div class="w-10"></div>
+                    </div>
+
+                    <!-- Parent Tabs -->
+                    <div class="flex border-b">
+                        <button class="flex-1 py-4 font-bold ${this.parentTab === 'manage' ? 'bg-blue-500 text-white' : 'bg-gray-200'}"
+                                onclick="app.switchParentTab('manage')">
+                            Taken Beheren
+                        </button>
+                        <button class="flex-1 py-4 font-bold ${this.parentTab === 'progress' ? 'bg-blue-500 text-white' : 'bg-gray-200'}"
+                                onclick="app.switchParentTab('progress')">
+                            Voortgang
+                        </button>
+                    </div>
+
+                    <!-- Parent Content -->
+                    <div class="p-4 pb-20">
+                        ${this.parentTab === 'manage' ? this.renderManageTab() : this.renderProgressTab()}
+                    </div>
+                `;
+            }
+
+            renderManageTab() {
+                return `
+                    <div class="space-y-8">
+                        <!-- Add Tasks Section -->
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">Taak Templates Toevoegen</h2>
+
+                            ${this.renderTemplateSection('Ochtend', 'morning')}
+                            ${this.renderTemplateSection('Middag', 'afternoon')}
+                            ${this.renderTemplateSection('Avond', 'evening')}
+                        </div>
+
+                        <!-- Current Tasks Section -->
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">Huidige Taken</h2>
+                            ${this.renderCurrentTasks()}
+                        </div>
+
+                        <!-- Reset Button -->
+                        <button onclick="app.resetToday()"
+                                class="w-full bg-red-500 text-white py-4 rounded-lg font-bold text-lg hover:bg-red-600 transition-colors">
+                            🔄 Reset Vandaag
+                        </button>
+                    </div>
+                `;
+            }
+
+            renderTemplateSection(title, dayPart) {
+                const templates = TASK_TEMPLATES.filter(t => t.dayPart === dayPart);
+
+                return `
+                    <div class="mb-6">
+                        <h3 class="font-bold text-lg mb-3">${title}</h3>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${templates.map(template => `
+                                <button onclick="app.addTask(${JSON.stringify(template).replace(/"/g, '&quot;')}, '${dayPart}')"
+                                        class="bg-gradient-to-r from-purple-200 to-pink-200 p-4 rounded-lg hover:from-purple-300 hover:to-pink-300 transition-colors text-left">
+                                    <div class="text-3xl mb-1">${template.emoji}</div>
+                                    <div class="font-semibold text-sm">${template.name}</div>
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderCurrentTasks() {
+                const allTasks = [
+                    ...this.tasks.morning.map(t => ({...t, dayPart: 'morning', dayPartLabel: 'Ochtend'})),
+                    ...this.tasks.afternoon.map(t => ({...t, dayPart: 'afternoon', dayPartLabel: 'Middag'})),
+                    ...this.tasks.evening.map(t => ({...t, dayPart: 'evening', dayPartLabel: 'Avond'}))
+                ];
+
+                if (allTasks.length === 0) {
+                    return '<div class="text-gray-500 text-center py-8">Nog geen taken toegevoegd</div>';
+                }
+
+                return `
+                    <div class="space-y-3">
+                        ${allTasks.map(task => `
+                            <div class="bg-gray-100 p-4 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3 flex-1">
+                                        <div class="text-4xl">${task.emoji}</div>
+                                        <div>
+                                            <div class="font-bold">${task.name}</div>
+                                            <div class="text-sm text-gray-600">${task.dayPartLabel} • ${task.verifyWord}</div>
+                                            <div class="text-xs text-gray-500">${this.getAnimationLabel(task.animation)} • ${this.getSoundLabel(task.sound)}</div>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="app.editTask('${task.dayPart}', '${task.id}')"
+                                                class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">
+                                            ✏️ Bewerken
+                                        </button>
+                                        <button onclick="app.removeTask('${task.dayPart}', '${task.id}')"
+                                                class="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            renderProgressTab() {
+                const completedCount = this.getCompletedDaysCount();
+
+                return `
+                    <div class="space-y-6">
+                        <!-- Week Train Visualization -->
+                        <div class="bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-lg">
+                            <h2 class="text-xl font-bold mb-4 text-center">Trein Voortgang</h2>
+                            ${this.renderLargeTrainVisualization()}
+                        </div>
+
+                        <!-- Week Overview -->
+                        <div>
+                            <h2 class="text-xl font-bold mb-4">Week Overzicht</h2>
+                            ${this.renderWeekOverview()}
+                        </div>
+
+                        <!-- Total Count -->
+                        <div class="text-center bg-yellow-100 p-6 rounded-lg">
+                            <div class="text-5xl mb-2">${completedCount === 7 ? '🏆' : '🎯'}</div>
+                            <div class="text-3xl font-bold">${completedCount} / 7 dagen voltooid!</div>
+                            ${completedCount === 7 ? '<div class="text-xl mt-2 text-yellow-600">🎉 Hele week gelukt! 🎉</div>' : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderWeekOverview() {
+                const days = ['Ma', 'Di', 'Wo', 'Do', 'Vr', 'Za', 'Zo'];
+
+                return `
+                    <div class="space-y-2">
+                        ${this.weekProgress.map((day, i) => `
+                            <div class="flex items-center gap-3 bg-gray-100 p-3 rounded">
+                                <div class="font-bold w-8">${days[i]}</div>
+                                <div class="flex gap-2">
+                                    <div class="w-6 h-6 rounded-full ${day.dayParts.morning ? 'bg-yellow-500' : 'bg-gray-300'}" title="Ochtend"></div>
+                                    <div class="w-6 h-6 rounded-full ${day.dayParts.afternoon ? 'bg-orange-500' : 'bg-gray-300'}" title="Middag"></div>
+                                    <div class="w-6 h-6 rounded-full ${day.dayParts.evening ? 'bg-blue-500' : 'bg-gray-300'}" title="Avond"></div>
+                                </div>
+                                ${day.completed ? '<div class="ml-auto text-2xl">✨</div>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            renderLargeTrainVisualization() {
+                return `
+                    <div class="flex justify-center gap-2 flex-wrap">
+                        ${this.weekProgress.map((day, i) => `
+                            <div class="flex flex-col items-center cursor-pointer hover:scale-110 transition-transform"
+                                 onclick="app.showDayDetail(${i})">
+                                <div class="w-16 h-24 ${day.completed ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gray-300'} rounded-lg flex flex-col items-center justify-center shadow-lg">
+                                    <div class="text-3xl">🚃</div>
+                                    <div class="text-xs font-bold">${i + 1}</div>
+                                </div>
+                                ${day.completed ? '<div class="text-2xl mt-1">✨</div>' : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            getAnimationLabel(type) {
+                const labels = {
+                    stars: '⭐ Sterren',
+                    confetti: '🎊 Confetti',
+                    balloons: '🎈 Ballonnen',
+                    fireworks: '🎆 Vuurwerk',
+                    hearts: '💕 Hartjes'
+                };
+                return labels[type] || type;
+            }
+
+            getSoundLabel(type) {
+                const labels = {
+                    pling: 'Pling!',
+                    hoera: 'Hoera!',
+                    gelukt: 'Gelukt!'
+                };
+                return labels[type] || type;
+            }
+
+            // ============================================================================
+            // MODALS
+            // ============================================================================
+
+            showVerificationModal(dayPart, taskId) {
+                const task = this.tasks[dayPart].find(t => t.id === taskId);
+                if (!task) return;
+
+                const isCompleted = task.completed;
+
+                const modal = document.createElement('div');
+                modal.id = 'verification-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 text-center">
+                        <div class="text-8xl mb-4">${task.emoji}</div>
+                        <div class="text-3xl font-bold mb-6">${task.name}</div>
+
+                        ${!isCompleted ? `
+                            <div class="text-lg mb-2">Typ het woord:</div>
+                            <div class="text-5xl font-bold text-blue-600 mb-6">${task.verifyWord}</div>
+
+                            <input type="text"
+                                   id="verify-input"
+                                   class="w-full border-4 border-blue-500 rounded-lg p-4 text-center text-2xl uppercase mb-4"
+                                   placeholder="Type hier..."
+                                   autocomplete="off">
+
+                            <div class="flex gap-3">
+                                <button onclick="app.closeModal()"
+                                        class="flex-1 bg-gray-300 text-black py-4 rounded-lg font-bold text-xl hover:bg-gray-400">
+                                    Annuleren
+                                </button>
+                                <button onclick="app.verifyTask('${dayPart}', '${taskId}')"
+                                        class="flex-1 bg-green-500 text-white py-4 rounded-lg font-bold text-xl hover:bg-green-600">
+                                    Controleren ✓
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="text-xl mb-6 text-green-600 font-bold">✓ Taak voltooid!</div>
+
+                            <div class="mb-4">
+                                <button onclick="app.showUndoInput('${dayPart}', '${taskId}')"
+                                        id="undo-button"
+                                        class="w-full bg-orange-500 text-white py-3 rounded-lg font-bold hover:bg-orange-600">
+                                    Ongedaan maken (typ UNDO)
+                                </button>
+                            </div>
+
+                            <div id="undo-input-container" class="hidden mb-4">
+                                <input type="text"
+                                       id="undo-input"
+                                       class="w-full border-4 border-orange-500 rounded-lg p-4 text-center text-2xl uppercase mb-3"
+                                       placeholder="Typ UNDO">
+                                <button onclick="app.undoTask('${dayPart}', '${taskId}')"
+                                        class="w-full bg-red-500 text-white py-3 rounded-lg font-bold hover:bg-red-600">
+                                    Bevestig Ongedaan Maken
+                                </button>
+                            </div>
+
+                            <button onclick="app.closeModal()"
+                                    class="w-full bg-blue-500 text-white py-4 rounded-lg font-bold text-xl hover:bg-blue-600">
+                                    Sluiten
+                            </button>
+                        `}
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                // Focus input if present
+                setTimeout(() => {
+                    const input = document.getElementById('verify-input');
+                    if (input) input.focus();
+                }, 100);
+            }
+
+            showEditTaskModal(dayPart, taskId) {
+                const task = this.tasks[dayPart].find(t => t.id === taskId);
+                if (!task) return;
+
+                const modal = document.createElement('div');
+                modal.id = 'edit-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 my-8">
+                        <h2 class="text-2xl font-bold mb-6">Taak Bewerken</h2>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block font-bold mb-2">Verificatie Woord</label>
+                                <input type="text"
+                                       id="edit-word"
+                                       value="${task.verifyWord}"
+                                       class="w-full border-2 border-gray-300 rounded-lg p-3 uppercase"
+                                       placeholder="WOORD">
+                            </div>
+
+                            <div>
+                                <label class="block font-bold mb-2">Animatie Type</label>
+                                <select id="edit-animation" class="w-full border-2 border-gray-300 rounded-lg p-3">
+                                    <option value="stars" ${task.animation === 'stars' ? 'selected' : ''}>⭐ Sterren</option>
+                                    <option value="confetti" ${task.animation === 'confetti' ? 'selected' : ''}>🎊 Confetti</option>
+                                    <option value="balloons" ${task.animation === 'balloons' ? 'selected' : ''}>🎈 Ballonnen</option>
+                                    <option value="fireworks" ${task.animation === 'fireworks' ? 'selected' : ''}>🎆 Vuurwerk</option>
+                                    <option value="hearts" ${task.animation === 'hearts' ? 'selected' : ''}>💕 Hartjes</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block font-bold mb-2">Geluid Type</label>
+                                <select id="edit-sound" class="w-full border-2 border-gray-300 rounded-lg p-3">
+                                    <option value="pling" ${task.sound === 'pling' ? 'selected' : ''}>Pling!</option>
+                                    <option value="hoera" ${task.sound === 'hoera' ? 'selected' : ''}>Hoera!</option>
+                                    <option value="gelukt" ${task.sound === 'gelukt' ? 'selected' : ''}>Gelukt!</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="app.closeModal()"
+                                    class="flex-1 bg-gray-300 text-black py-3 rounded-lg font-bold hover:bg-gray-400">
+                                Annuleren
+                            </button>
+                            <button onclick="app.saveTaskEdit('${dayPart}', '${taskId}')"
+                                    class="flex-1 bg-blue-500 text-white py-3 rounded-lg font-bold hover:bg-blue-600">
+                                Opslaan
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            }
+
+            showTrainDetailModal() {
+                const completedCount = this.getCompletedDaysCount();
+                const modal = document.createElement('div');
+                modal.id = 'train-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+                        <h2 class="text-3xl font-bold mb-6 text-center">Jouw Trein 🚂</h2>
+
+                        ${completedCount === 7 ? `
+                            <div class="bg-gradient-to-r from-yellow-400 to-orange-500 text-white p-6 rounded-lg mb-6 text-center">
+                                <div class="text-6xl mb-3">🏆</div>
+                                <div class="text-3xl font-bold">GEWELDIG!</div>
+                                <div class="text-xl">Hele week voltooid! 🎉</div>
+                            </div>
+                        ` : ''}
+
+                        <div class="mb-8">
+                            ${this.renderLargeTrainVisualization()}
+                        </div>
+
+                        <div class="text-center text-2xl font-bold mb-4">
+                            ${completedCount} / 7 dagen voltooid!
+                        </div>
+
+                        <button onclick="app.closeModal()"
+                                class="w-full bg-blue-500 text-white py-4 rounded-lg font-bold text-xl hover:bg-blue-600">
+                            Sluiten
+                        </button>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+
+                if (completedCount === 7) {
+                    this.playAnimation('confetti');
+                }
+            }
+
+            showDayDetail(dayIndex) {
+                const day = this.weekProgress[dayIndex];
+                const days = ['Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag', 'Zondag'];
+
+                const modal = document.createElement('div');
+                modal.id = 'day-detail-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4">
+                        <h2 class="text-2xl font-bold mb-4 text-center">${days[dayIndex]}</h2>
+
+                        <div class="space-y-3 mb-6">
+                            <div class="flex items-center gap-3 p-3 rounded ${day.dayParts.morning ? 'bg-yellow-100' : 'bg-gray-100'}">
+                                <div class="text-3xl">🐓</div>
+                                <div class="flex-1 font-bold">Ochtend</div>
+                                <div class="text-2xl">${day.dayParts.morning ? '✓' : '○'}</div>
+                            </div>
+
+                            <div class="flex items-center gap-3 p-3 rounded ${day.dayParts.afternoon ? 'bg-orange-100' : 'bg-gray-100'}">
+                                <div class="text-3xl">🌞</div>
+                                <div class="flex-1 font-bold">Middag</div>
+                                <div class="text-2xl">${day.dayParts.afternoon ? '✓' : '○'}</div>
+                            </div>
+
+                            <div class="flex items-center gap-3 p-3 rounded ${day.dayParts.evening ? 'bg-blue-100' : 'bg-gray-100'}">
+                                <div class="text-3xl">🌛</div>
+                                <div class="flex-1 font-bold">Avond</div>
+                                <div class="text-2xl">${day.dayParts.evening ? '✓' : '○'}</div>
+                            </div>
+                        </div>
+
+                        ${day.completed ? '<div class="text-center text-3xl mb-4">✨ Dag Voltooid! ✨</div>' : ''}
+
+                        <button onclick="app.closeModal()"
+                                class="w-full bg-blue-500 text-white py-3 rounded-lg font-bold hover:bg-blue-600">
+                            Sluiten
+                        </button>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+            }
+
+            showWeekCompleteModal() {
+                const modal = document.createElement('div');
+                modal.id = 'week-complete-modal';
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                modal.innerHTML = `
+                    <div class="bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 rounded-2xl p-8 max-w-md w-full mx-4 text-center text-white">
+                        <div class="text-8xl mb-4">🏆</div>
+                        <div class="text-4xl font-bold mb-4">SUPER GOED GEDAAN!</div>
+                        <div class="text-2xl mb-6">Hele week voltooid! 🎉</div>
+                        <div class="text-6xl mb-6">🚂✨🎊🎈</div>
+
+                        <button onclick="app.closeModal()"
+                                class="w-full bg-white text-orange-600 py-4 rounded-lg font-bold text-xl hover:bg-gray-100">
+                            Hoera! 🎉
+                        </button>
+                    </div>
+                `;
+
+                document.body.appendChild(modal);
+                this.playAnimation('fireworks');
+                this.playSound('hoera');
+            }
+
+            closeModal() {
+                const modals = ['verification-modal', 'edit-modal', 'train-modal', 'day-detail-modal', 'week-complete-modal'];
+                modals.forEach(id => {
+                    const modal = document.getElementById(id);
+                    if (modal) modal.remove();
+                });
+            }
+
+            // ============================================================================
+            // EVENT HANDLERS
+            // ============================================================================
+
+            attachEventListeners() {
+                // Add enter key support for verification input
+                const verifyInput = document.getElementById('verify-input');
+                if (verifyInput) {
+                    verifyInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            const button = verifyInput.nextElementSibling?.querySelector('button:last-child');
+                            if (button) button.click();
+                        }
+                    });
+                }
+            }
+
+            switchMode(mode) {
+                this.mode = mode;
+                if (mode === 'parent') {
+                    this.parentTab = this.parentTab || 'manage';
+                }
+                this.render();
+            }
+
+            switchParentTab(tab) {
+                this.parentTab = tab;
+                this.render();
+            }
+
+            switchDayPart(dayPart) {
+                this.activeDayPart = dayPart;
+                this.render();
+            }
+
+            handleTaskClick(dayPart, taskId) {
+                this.showVerificationModal(dayPart, taskId);
+            }
+
+            verifyTask(dayPart, taskId) {
+                const task = this.tasks[dayPart].find(t => t.id === taskId);
+                const input = document.getElementById('verify-input');
+
+                if (!task || !input) return;
+
+                const enteredWord = input.value.toUpperCase().trim();
+
+                if (enteredWord === task.verifyWord) {
+                    this.toggleTaskCompletion(dayPart, taskId, true);
+                    this.closeModal();
+                } else {
+                    alert('Onjuist woord! Probeer opnieuw.');
+                    input.value = '';
+                    input.focus();
+                }
+            }
+
+            showUndoInput(dayPart, taskId) {
+                const button = document.getElementById('undo-button');
+                const container = document.getElementById('undo-input-container');
+
+                if (button && container) {
+                    button.classList.add('hidden');
+                    container.classList.remove('hidden');
+                    const input = document.getElementById('undo-input');
+                    if (input) input.focus();
+                }
+            }
+
+            undoTask(dayPart, taskId) {
+                const input = document.getElementById('undo-input');
+
+                if (!input) return;
+
+                const enteredWord = input.value.toUpperCase().trim();
+
+                if (enteredWord === 'UNDO') {
+                    this.toggleTaskCompletion(dayPart, taskId, false);
+                    this.closeModal();
+                } else {
+                    alert('Typ UNDO om deze taak ongedaan te maken');
+                    input.value = '';
+                    input.focus();
+                }
+            }
+
+            editTask(dayPart, taskId) {
+                this.showEditTaskModal(dayPart, taskId);
+            }
+
+            saveTaskEdit(dayPart, taskId) {
+                const word = document.getElementById('edit-word').value.toUpperCase().trim();
+                const animation = document.getElementById('edit-animation').value;
+                const sound = document.getElementById('edit-sound').value;
+
+                if (!word) {
+                    alert('Verificatie woord mag niet leeg zijn!');
+                    return;
+                }
+
+                this.updateTask(dayPart, taskId, {
+                    verifyWord: word,
+                    animation: animation,
+                    sound: sound
+                });
+
+                this.closeModal();
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZE APP
+        // ============================================================================
+
+        let app;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            app = new HabitTrackerApp();
+
+            // Make app globally accessible for onclick handlers
+            window.app = app;
+        });
+
+        // Prevent pull-to-refresh on mobile
+        document.addEventListener('touchmove', function(e) {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Prevent double-tap zoom on mobile
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function(e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, false);
+    </script>
+</body>
+</html>
