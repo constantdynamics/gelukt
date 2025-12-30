@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Generator - Kids Habit Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            margin: 10px;
+        }
+        button {
+            background: #9333ea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Icon Generator voor Kids Habit Tracker</h1>
+
+    <div class="instructions">
+        <h3>Instructies:</h3>
+        <ol>
+            <li>Klik op "Genereer Icons" hieronder</li>
+            <li>Rechtermuisklik op elk icon</li>
+            <li>Kies "Afbeelding opslaan als..."</li>
+            <li>Sla op als <code>icon-192.png</code> en <code>icon-512.png</code></li>
+        </ol>
+    </div>
+
+    <button onclick="generateIcons()">🎨 Genereer Icons</button>
+
+    <div id="icon-container"></div>
+
+    <script>
+        function generateIcons() {
+            const container = document.getElementById('icon-container');
+            container.innerHTML = '<h2>Gegenereerde Icons:</h2>';
+
+            // Generate 192x192 icon
+            const icon192 = generateIcon(192);
+            container.appendChild(createDownloadSection(icon192, '192x192', 'icon-192.png'));
+
+            // Generate 512x512 icon
+            const icon512 = generateIcon(512);
+            container.appendChild(createDownloadSection(icon512, '512x512', 'icon-512.png'));
+        }
+
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Background gradient
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#9333ea');  // purple
+            gradient.addColorStop(0.5, '#ec4899'); // pink
+            gradient.addColorStop(1, '#ef4444');   // red
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+
+            // Add rounded corners
+            ctx.globalCompositeOperation = 'destination-in';
+            ctx.beginPath();
+            const radius = size * 0.2;
+            ctx.moveTo(radius, 0);
+            ctx.lineTo(size - radius, 0);
+            ctx.quadraticCurveTo(size, 0, size, radius);
+            ctx.lineTo(size, size - radius);
+            ctx.quadraticCurveTo(size, size, size - radius, size);
+            ctx.lineTo(radius, size);
+            ctx.quadraticCurveTo(0, size, 0, size - radius);
+            ctx.lineTo(0, radius);
+            ctx.quadraticCurveTo(0, 0, radius, 0);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.globalCompositeOperation = 'source-over';
+
+            // Train emoji
+            ctx.font = `${size * 0.5}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🚂', size / 2, size / 2);
+
+            return canvas;
+        }
+
+        function createDownloadSection(canvas, label, filename) {
+            const section = document.createElement('div');
+            section.style.margin = '20px 0';
+
+            const title = document.createElement('h3');
+            title.textContent = `${label} (${filename})`;
+            section.appendChild(title);
+
+            section.appendChild(canvas);
+
+            const downloadBtn = document.createElement('button');
+            downloadBtn.textContent = `⬇️ Download ${filename}`;
+            downloadBtn.onclick = () => {
+                const link = document.createElement('a');
+                link.download = filename;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+            section.appendChild(downloadBtn);
+
+            return section;
+        }
+
+        // Auto-generate on load
+        window.addEventListener('load', generateIcons);
+    </script>
+</body>
+</html>

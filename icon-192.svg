@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#9333ea;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ec4899;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ef4444;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded rectangle background -->
+  <rect x="0" y="0" width="192" height="192" rx="38.400000000000006" ry="38.400000000000006" fill="url(#bgGradient)" />
+
+  <!-- Train emoji (using text) -->
+  <text x="96" y="96" font-size="96" text-anchor="middle" dominant-baseline="central" font-family="Arial, sans-serif">🚂</text>
+
+  <!-- Optional: Add stars for decoration -->
+  <text x="28.799999999999997" y="38.400000000000006" font-size="28.799999999999997" opacity="0.8">✨</text>
+  <text x="163.2" y="153.60000000000002" font-size="28.799999999999997" opacity="0.8">✨</text>
+</svg>

@@ -14,9 +14,31 @@ Een eenvoudige, visueel aantrekkelijke habit tracker app speciaal ontworpen voor
 
 ## 🚀 Hoe te gebruiken
 
-### Lokaal Gebruik
+### 🌐 Live App (GitHub Pages) - AANBEVOLEN
 
-1. **Download het bestand**: `kids-habit-tracker.html`
+**De app is beschikbaar als Progressive Web App op:**
+
+https://constantdynamics.github.io/gelukt/
+
+**Installeer als app op je telefoon/tablet:**
+
+#### iOS (iPhone/iPad):
+1. Open de link in Safari
+2. Tik op het "Deel" icoon (vierkant met pijl omhoog)
+3. Scroll naar beneden en tik "Voeg toe aan beginscherm"
+4. Tik "Toevoegen"
+5. De app verschijnt nu op je beginscherm! 🎉
+
+#### Android:
+1. Open de link in Chrome
+2. Tik op het menu (drie puntjes)
+3. Tik "Toevoegen aan startscherm" of "App installeren"
+4. Tik "Installeren"
+5. De app verschijnt nu op je startscherm! 🎉
+
+### 💻 Lokaal Gebruik (Offline)
+
+1. **Download het bestand**: `kids-habit-tracker.html` of `index.html`
 2. **Open het bestand**: Dubbelklik op het bestand of open het met je browser
 3. **Gebruik op mobiel**:
    - Stuur het bestand naar je telefoon/tablet via email of cloud storage
@@ -129,12 +151,15 @@ De trein is het beloningssysteem:
 
 ## 🛠️ Technische Details
 
+- **Progressive Web App (PWA)**: Installeerbaar als native app
+- **Service Worker**: Voor offline functionaliteit en caching
 - **Single Page Application**: Alles in één HTML bestand
 - **Framework**: Vanilla JavaScript (geen externe dependencies behalve Tailwind CSS via CDN)
 - **Styling**: Tailwind CSS
-- **Storage**: localStorage Web API
+- **Storage**: localStorage Web API (data blijft lokaal op je apparaat)
 - **Audio**: Web Audio API (gegenereerde tonen, geen audio bestanden)
 - **Animaties**: CSS animations
+- **Manifest**: Web App Manifest voor installatie en app-achtige ervaring
 
 ## 🎯 Tips voor Ouders
 
@@ -153,12 +178,42 @@ Als je problemen ondervindt:
 3. **JavaScript enabled**: Controleer dat JavaScript aan staat in je browser
 4. **Private mode**: Sommige browsers beperken localStorage in private mode
 
+## 🚀 GitHub Pages Deployment (voor ontwikkelaars)
+
+Als je deze app zelf wilt hosten op GitHub Pages:
+
+1. **Fork de repository** op GitHub
+2. **Ga naar Settings** van je repository
+3. **Klik op Pages** in het linker menu
+4. **Source**: Selecteer je branch (bijv. `main` of `claude/make-this-now-011CUsDp1TdKkh7QZPH765UF`)
+5. **Folder**: Selecteer `/ (root)`
+6. **Klik Save**
+7. **Wacht even** - GitHub Pages bouwt je site
+8. **Je app is live!** Op: `https://[jouw-username].github.io/gelukt/`
+
+### PWA Bestanden
+
+De volgende bestanden zijn nodig voor PWA functionaliteit:
+- `index.html` - Hoofd HTML bestand
+- `manifest.json` - Web App Manifest
+- `sw.js` - Service Worker voor offline functionaliteit
+- `icon-192.svg` & `icon-512.svg` - App icons
+
+### Icons Aanpassen
+
+Om je eigen icons te maken:
+1. Open `generate-icons.html` in je browser
+2. Download de gegenereerde PNG icons
+3. Vervang `icon-192.svg` en `icon-512.svg` (of gebruik PNG)
+4. Update `manifest.json` als je PNG gebruikt
+
 ## 📄 Licentie
 
 Dit is een open source project. Gebruik het vrij voor persoonlijk gebruik!
 
 ---
 
-**Versie**: 1.0
+**Versie**: 1.0 (PWA)
 **Datum**: November 2025
 **Ontwikkeld met**: ❤️ voor ouders en kinderen
+**Repository**: https://github.com/constantdynamics/gelukt
