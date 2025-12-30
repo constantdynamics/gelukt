@@ -1,11 +1,11 @@
 // Service Worker for Kids Habit Tracker PWA
-const CACHE_NAME = 'kids-habit-tracker-v1';
+const CACHE_NAME = 'kids-habit-tracker-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.svg',
-  '/icon-512.svg'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.svg',
+  './icon-512.svg'
 ];
 
 // Install event - cache files
@@ -70,7 +70,7 @@ self.addEventListener('fetch', (event) => {
           return response;
         }).catch(() => {
           // Network failed, return offline page if available
-          return caches.match('/index.html');
+          return caches.match('./index.html');
         });
       })
   );
