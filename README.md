@@ -5,11 +5,13 @@ Een eenvoudige, visueel aantrekkelijke habit tracker app speciaal ontworpen voor
 ## ✨ Kenmerken
 
 - **Kind-vriendelijke interface**: Extra grote knoppen en emoji's perfect voor kleine handjes
-- **Dagdeel systeem**: Ochtend, Middag en Avond met kleurcodering
-- **Trein visualisatie**: 7 wagons (één per dag) die inkleuren bij voltooiing
+- **Dagdeel systeem**: Ochtend, Middag en Avond, elk met een eigen lucht en kleur
+- **Groeiende trein**: Elke volledig afgeronde dag is een wagon — de trein blijft doorgroeien
 - **Leuke animaties**: Sterren, confetti, ballonnen, vuurwerk en hartjes
-- **Geluidseffecten**: Vrolijke geluiden bij voltooide taken
-- **Ouder controle**: Volledig beheer over taken en instellingen
+- **Geluidseffecten**: Drie ingebouwde geluiden, of je eigen stem per taak
+- **Eigen opname**: Neem per taak je eigen "Gelukt!" op met de microfoon
+- **Ouder controle**: Volledig beheer over taken, naam, avatar en instellingen
+- **Automatische reset**: Elke nacht om 00:00 staan de taken weer klaar
 - **100% Lokaal**: Alle data wordt opgeslagen op je apparaat, geen internet nodig
 
 ## 🚀 Hoe te gebruiken
@@ -72,22 +74,23 @@ https://constantdynamics.github.io/gelukt/
 
 #### Taken Beheren Tab
 
-- **Templates toevoegen**: Tik op een template button om direct een taak toe te voegen
+- **Kind**: Stel de naam en avatar in die je kind in de app ziet
+- **Templates toevoegen**: Kies eerst een dagdeel, tik dan op een template. Elke template kan aan
+  elk dagdeel worden toegevoegd — de ⭐ geeft alleen het aanbevolen dagdeel aan
 - **Taken bewerken**:
   - Wijzig het verificatie woord
   - Kies een andere animatie
-  - Kies een ander geluid
+  - Kies een ander geluid, of neem je eigen stem op
 - **Taken verwijderen**: Tik op de prullenbak (🗑️)
-- **Reset vandaag**: Zet alle taken terug naar niet-voltooid (handig voor dagelijkse reset)
+- **Reset vandaag**: Zet alle taken van vandaag terug naar niet-voltooid
+- **Hele trein resetten**: Wist alle wagons en zet de teller op 0 (met bevestiging)
 
 #### Voortgang Tab
 
-- **Trein visualisatie**: Zie welke dagen voltooid zijn
-- **Week overzicht**: Zie per dag welke dagdelen voltooid zijn
-  - Gele cirkel = Ochtend voltooid
-  - Oranje cirkel = Middag voltooid
-  - Blauwe cirkel = Avond voltooid
-- **Totaal teller**: Aantal voltooide dagen van de 7
+- **Trein visualisatie**: Alle verdiende wagons, per rij van 7
+- **Deze week**: Per dag drie bolletjes (🐓 ochtend, 🌞 middag, 🌛 avond) die groen kleuren
+  zodra dat dagdeel klaar is. Een 🏆 markeert een volledig afgeronde dag
+- **Totaal teller**: Aantal voltooide dagen in totaal + hoeveel daarvan deze week vallen
 
 ## 🎨 Beschikbare Templates
 
@@ -117,15 +120,29 @@ https://constantdynamics.github.io/gelukt/
 - **Pling!**: Kort, vrolijk belgeluid
 - **Hoera!**: Juichend geluid
 - **Gelukt!**: Succes melodie
+- **🎤 Eigen opname**: Neem per taak je eigen stem op (max 5 seconden). Elke taak kan zijn
+  eigen opname hebben — bijvoorbeeld papa bij tandenpoetsen en mama bij opruimen
+
+> Opnemen vraagt eenmalig toestemming voor de microfoon. De opname blijft op het apparaat
+> (IndexedDB) en wordt nooit verstuurd.
 
 ## 🏆 Trein Systeem
 
 De trein is het beloningssysteem:
 
-1. **Start**: 7 grijze wagons (één per dag)
-2. **Voltooiing**: Als alle 3 dagdelen (ochtend, middag, avond) voltooid zijn, kleurt de wagon van die dag geel/oranje
-3. **Week compleet**: Bij 7/7 dagen krijg je een grote viering met confetti en gouden banner!
-4. **Doorgroeien**: De trein kan doorgroeien tot 8, 9, 10+ dagen - geen automatische reset
+1. **Start**: een locomotief zonder wagons
+2. **Wagon verdienen**: zodra alle drie de dagdelen van een dag klaar zijn, komt er een wagon bij.
+   Een dagdeel zonder taken telt automatisch mee als klaar
+3. **Doorgroeien**: de trein blijft groeien — 8, 9, 10+ wagons. Elke rij van 7 wagons wordt
+   gevierd met vuurwerk en een gouden scherm
+4. **Geen automatische reset**: de trein reset nooit vanzelf. De ouder kan hem handmatig
+   resetten via "🚂 Hele trein resetten"
+
+## 🌙 Dagelijkse reset
+
+Om 00:00 worden alle vinkjes automatisch gewist zodat de nieuwe dag klaarstaat. De trein en het
+weekoverzicht blijven bewaard — alleen de taken van vandaag gaan terug naar open. Wil je eerder
+opnieuw beginnen, gebruik dan "🔄 Reset vandaag".
 
 ## 💾 Data Opslag
 
@@ -136,10 +153,10 @@ De trein is het beloningssysteem:
 
 ## ⚠️ Belangrijk
 
-- **Verificatie**: Elke taak vereist dat een ouder het juiste woord intypt voordat de taak als voltooid wordt gemarkeerd
+- **Verificatie**: Elke taak vereist dat een ouder het juiste woord intypt voordat de taak als voltooid wordt gemarkeerd. Hoofdletters maken niet uit: `TANDEN` = `tanden` = `TaNdEn`
 - **Ongedaan maken**: Tik op een voltooide (groene) taak en typ "UNDO" om deze terug te zetten
 - **Reset**: Gebruik de "🔄 Reset Vandaag" knop in ouder-modus om alle taken te resetten (verwijdert GEEN taken, alleen voltooiing status)
-- **Browser data**: Als je je browser data/cache wist, gaan alle taken en voortgang verloren
+- **Browser data**: Als je je browser data/cache wist, gaan alle taken, voortgang en opnames verloren
 
 ## 📱 Browser Compatibiliteit
 
@@ -154,11 +171,12 @@ De trein is het beloningssysteem:
 - **Progressive Web App (PWA)**: Installeerbaar als native app
 - **Service Worker**: Voor offline functionaliteit en caching
 - **Single Page Application**: Alles in één HTML bestand
-- **Framework**: Vanilla JavaScript (geen externe dependencies behalve Tailwind CSS via CDN)
-- **Styling**: Tailwind CSS
-- **Storage**: localStorage Web API (data blijft lokaal op je apparaat)
-- **Audio**: Web Audio API (gegenereerde tonen, geen audio bestanden)
-- **Animaties**: CSS animations
+- **Framework**: Vanilla JavaScript, geen externe dependencies en geen CDN — de app werkt
+  volledig offline vanaf de eerste keer laden
+- **Styling**: Eigen CSS design system met custom properties
+- **Storage**: localStorage voor taken, voortgang en profiel; IndexedDB voor eigen opnames
+- **Audio**: Web Audio API (gegenereerde tonen) + MediaRecorder voor eigen opnames
+- **Animaties**: CSS animations, met respect voor `prefers-reduced-motion`
 - **Manifest**: Web App Manifest voor installatie en app-achtige ervaring
 
 ## 🎯 Tips voor Ouders
@@ -213,7 +231,7 @@ Dit is een open source project. Gebruik het vrij voor persoonlijk gebruik!
 
 ---
 
-**Versie**: 1.0 (PWA)
-**Datum**: November 2025
+**Versie**: 2.0 (PWA)
+**Datum**: September 2026
 **Ontwikkeld met**: ❤️ voor ouders en kinderen
 **Repository**: https://github.com/constantdynamics/gelukt

@@ -3,6 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
+      - claude/kan-dit-nu-maken-o9x58e
       - claude/make-this-now-011CUsDp1TdKkh7QZPH765UF
       - main
 
@@ -30,6 +31,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          # Turns Pages on for the repository if it is not enabled yet, so a fresh
+          # clone deploys without anyone visiting Settings first.
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

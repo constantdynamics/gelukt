@@ -1,5 +1,5 @@
 // Service Worker for Kids Habit Tracker PWA
-const CACHE_NAME = 'kids-habit-tracker-v2';
+const CACHE_NAME = 'kids-habit-tracker-v3';
 const urlsToCache = [
   './',
   './index.html',
