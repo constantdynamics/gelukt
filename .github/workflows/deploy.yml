@@ -31,6 +31,10 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          # Turns Pages on for the repository if it is not enabled yet, so a fresh
+          # clone deploys without anyone visiting Settings first.
+          enablement: true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
